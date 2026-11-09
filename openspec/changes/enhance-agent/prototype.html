@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Ledger 原型 — 助手增强与排版重排</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --panel:#ffffff; --line:#e5e7eb; --ink:#1f2329; --ink2:#6b7280;
+    --accent:#3b6ef5; --accent-soft:#eef3fe; --green:#16a34a; --red:#dc2626; --amber:#d97706;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  .app{display:flex;height:100vh;overflow:hidden}
+
+  /* ── 侧栏 ── */
+  .side{width:180px;background:var(--panel);border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;gap:2px;flex-shrink:0}
+  .logo{font-weight:700;font-size:16px;padding:4px 10px 14px;display:flex;align-items:center;gap:8px}
+  .logo .dot{width:22px;height:22px;border-radius:7px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+  .group-title{font-size:11px;color:var(--ink2);padding:12px 10px 4px;letter-spacing:1px}
+  .nav{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;color:var(--ink2);cursor:pointer}
+  .nav svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .nav.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .fab{margin-top:auto;margin:12px 10px 0;padding:9px;border-radius:10px;border:1px dashed var(--accent);color:var(--accent);text-align:center;font-size:12px;cursor:pointer;background:var(--accent-soft)}
+
+  /* ── 主区 ── */
+  .main{flex:1;overflow-y:auto;padding:18px 22px 40px}
+  .topbar{display:flex;gap:10px;margin-bottom:18px}
+  .search{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 14px;color:var(--ink2);display:flex;justify-content:space-between;align-items:center}
+  .search kbd{font-size:11px;color:var(--ink2);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+  .btn{border:none;border-radius:10px;padding:9px 16px;font-size:13px;cursor:pointer;font-weight:600}
+  .btn.primary{background:var(--accent);color:#fff}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  h2{font-size:13px;color:var(--ink2);font-weight:600;margin:20px 0 10px}
+  h2:first-of-type{margin-top:0}
+
+  .nwrow{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:12px}
+  .nw .big{font-size:24px;font-weight:700;margin-top:4px}
+  .nw .muted{font-size:12px;color:var(--ink2)}
+  .pos{color:var(--green)} .neg{color:var(--red)}
+
+  .insight{border-left:3px solid var(--amber);display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 16px;margin-bottom:10px}
+  .insight.blue{border-left-color:var(--accent)}
+  .insight .t{font-weight:600;font-size:13px}
+  .insight .d{font-size:12px;color:var(--ink2);margin-top:2px}
+  .ask{white-space:nowrap;font-size:12px;color:var(--accent);background:var(--accent-soft);border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-weight:600}
+
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .bar{height:8px;background:var(--bg);border-radius:99px;overflow:hidden;margin-top:8px}
+  .bar i{display:block;height:100%;border-radius:99px;background:var(--accent)}
+  .bar.warn i{background:var(--amber)}
+  .kv{display:flex;justify-content:space-between;font-size:13px;margin-top:6px}
+  .kv b{font-weight:600}
+
+  .chart{display:flex;align-items:flex-end;gap:14px;height:120px;margin-top:12px;padding:0 6px}
+  .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .stack{width:26px;display:flex;flex-direction:column-reverse;border-radius:6px;overflow:hidden}
+  .stack .in{background:#93c5fd}.stack .out{background:var(--accent)}
+  .col span{font-size:11px;color:var(--ink2)}
+  .legend{font-size:12px;color:var(--ink2);display:flex;gap:14px;margin-top:10px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+  /* ── 助手抽屉 ── */
+  .drawer{width:390px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0}
+  .dhead{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .dhead b{font-size:14px}
+  .dhead .x{color:var(--ink2);cursor:pointer;font-size:16px}
+  .ctx{margin:12px 14px 0;background:var(--accent-soft);color:var(--accent);font-size:12px;border-radius:8px;padding:7px 10px}
+  .msgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+  .m{max-width:88%;border-radius:12px;padding:9px 12px;font-size:13px;line-height:1.55}
+  .m.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+  .m.bot{align-self:flex-start;background:var(--bg);border-bottom-left-radius:4px}
+  .confirm-card{align-self:flex-start;width:92%;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+  .confirm-card .ct{font-size:12px;color:var(--amber);font-weight:600;margin-bottom:8px}
+  .frow{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13px}
+  .frow:last-of-type{border:none}
+  .frow .k{color:var(--ink2)}
+  .frow .v{font-weight:600}
+  .frow .v.edit{color:var(--accent);border-bottom:1px dashed var(--accent)}
+  .actions{display:flex;gap:8px;margin-top:10px}
+  .actions .ok{flex:1;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:600;cursor:pointer}
+  .actions .no{flex:1;background:var(--bg);color:var(--ink2);border:none;border-radius:8px;padding:8px;font-size:13px;cursor:pointer}
+  .done{font-size:12px;color:var(--green);font-weight:600;margin-top:8px}
+  .input{border-top:1px solid var(--line);padding:12px 14px;display:flex;gap:8px}
+  .input input{flex:1;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13px;outline:none}
+  .tag{display:inline-block;font-size:11px;background:var(--bg);border:1px solid var(--line);border-radius:99px;padding:2px 8px;color:var(--ink2);margin:3px 4px 0 0}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 侧栏:8 页不增减,只分三组 -->
+  <aside class="side">
+    <div class="logo"><span class="dot">L</span>Ledger</div>
+    <div class="group-title">记账</div>
+    <div class="nav on"><svg viewBox="0 0 24 24"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>总览</div>
+    <div class="nav"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>账目</div>
+    <div class="nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>预算</div>
+    <div class="group-title">规划</div>
+    <div class="nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>目标</div>
+    <div class="nav"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>订阅</div>
+    <div class="group-title">分析</div>
+    <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>报表</div>
+    <div class="nav"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>理财</div>
+    <div class="fab">助手 · ⌘K</div>
+  </aside>
+
+  <!-- 主区:总览页重构 -->
+  <main class="main">
+    <div class="topbar">
+      <div class="search">🔍 搜账目、分类、标签…<kbd>⌘F</kbd></div>
+      <button class="btn primary">+ 记一笔</button>
+    </div>
+
+    <div class="nwrow">
+      <div class="card nw"><div class="muted">净资产</div><div class="big">¥ 486,320</div><div class="muted">较上月 <span class="pos">+¥ 5,840</span></div></div>
+      <div class="card nw"><div class="muted">总资产</div><div class="big">¥ 612,000</div><div class="muted">存款 · 理财 · 房产估值</div></div>
+      <div class="card nw"><div class="muted">总负债</div><div class="big neg">¥ 125,680</div><div class="muted">房贷 · 信用卡</div></div>
+      <div class="card nw"><div class="muted">本月结余</div><div class="big pos">¥ 6,120</div><div class="muted">收入 ¥15,400 − 支出 ¥9,280</div></div>
+    </div>
+
+    <h2>本周洞察 <span style="font-weight:400">— 由本地规则计算,点击「问助手」展开追问</span></h2>
+    <div class="card insight"><div><div class="t">⚠️ 预算消耗超前</div><div class="d">本月已过 47%,预算已用 61%。按此速度月底预计超支约 ¥1,850。</div></div><button class="ask">问助手 →</button></div>
+    <div class="card insight blue"><div><div class="t">💳 订阅临近扣费</div><div class="d">未来 5 天:iCloud+ ¥21(11月2日)、健身房 ¥299(11月4日)。</div></div><button class="ask">问助手 →</button></div>
+
+    <div class="duo" style="margin-top:12px">
+      <div class="card">
+        <div class="kv"><span>本月预算</span><b>¥9,280 / ¥15,000</b></div>
+        <div class="bar warn"><i style="width:62%"></i></div>
+        <div class="kv muted" style="font-size:12px;color:var(--ink2)"><span>剩余 16 天</span><span>日均可用 ¥358</span></div>
+      </div>
+      <div class="card">
+        <div class="kv"><span>🎯 应急金目标</span><b>¥52,000 / ¥60,000</b></div>
+        <div class="bar"><i style="width:87%"></i></div>
+        <div class="kv" style="font-size:12px;color:var(--ink2)"><span>月均存入 ¥2,400</span><span>预计 3 个月达成</span></div>
+      </div>
+    </div>
+
+    <h2>近 6 个月收支</h2>
+    <div class="card">
+      <div class="chart">
+        <div class="col"><div class="stack" style="height:80px"><i class="in" style="height:32px"></i><i class="out" style="height:48px"></i></div><span>5月</span></div>
+        <div class="col"><div class="stack" style="height:95px"><i class="in" style="height:35px"></i><i class="out" style="height:60px"></i></div><span>6月</span></div>
+        <div class="col"><div class="stack" style="height:88px"><i class="in" style="height:34px"></i><i class="out" style="height:54px"></i></div><span>7月</span></div>
+        <div class="col"><div class="stack" style="height:102px"><i class="in" style="height:36px"></i><i class="out" style="height:66px"></i></div><span>8月</span></div>
+        <div class="col"><div class="stack" style="height:92px"><i class="in" style="height:36px"></i><i class="out" style="height:56px"></i></div><span>9月</span></div>
+        <div class="col"><div class="stack" style="height:86px"><i class="in" style="height:38px"></i><i class="out" style="height:48px"></i></div><span>10月</span></div>
+      </div>
+      <div class="legend"><span><i style="background:#93c5fd"></i>收入</span><span><i style="background:var(--accent)"></i>支出</span></div>
+    </div>
+  </main>
+
+  <!-- 助手抽屉:全局唤起,带页面上下文与确认卡片 -->
+  <aside class="drawer">
+    <div class="dhead"><b>助手</b><span class="x">✕</span></div>
+    <div class="ctx">📄 上下文:你正在看「总览 · 2026-10」</div>
+    <div class="msgs">
+      <div class="m user">午饭花了 35</div>
+      <div class="confirm-card">
+        <div class="ct">待确认 — 确认后才会入账</div>
+        <div class="frow"><span class="k">金额</span><span class="v edit">¥35.00</span></div>
+        <div class="frow"><span class="k">类型</span><span class="v">支出</span></div>
+        <div class="frow"><span class="k">分类</span><span class="v edit">餐饮 ▾</span></div>
+        <div class="frow"><span class="k">日期</span><span class="v edit">2026-10-30</span></div>
+        <div class="frow"><span class="k">账户</span><span class="v edit">未选择 ▾</span></div>
+        <div class="frow"><span class="k">备注</span><span class="v edit">午饭</span></div>
+        <div class="actions"><button class="ok">✓ 确认入账</button><button class="no">取消</button></div>
+      </div>
+      <div class="m user">对了,帮我复盘一下这个月</div>
+      <div class="m bot">好的,这是 <b>10 月复盘</b>:<br><br>
+        <b>概览</b>:支出 ¥9,280,环比上月 <span class="pos">↓6%</span>;结余 ¥6,120。<br>
+        <b>花哪儿了</b>:餐饮 ¥3,120(34%)、居住 ¥2,200(24%)、交通 ¥1,460(16%)…<br>
+        <b>预算</b>:已用 61%,按当前速度预计超支 ¥1,850,主要是 10 月中旬换手机 ¥4,299。<br>
+        <b>固定支出</b>:订阅合计 ¥620,其中健身房 ¥299 已连续 3 个月几乎未使用。<br>
+        <b>一句话</b>:剔除换手机的一次性大额,日常消费其实持平,预算压力集中在订阅上。<br><br>
+        <span style="font-size:12px;color:var(--ink2)">本报告不构成投资建议</span>
+      </div>
+      <div class="m bot" style="background:var(--accent-soft);color:var(--accent);font-size:12px;align-self:flex-start;cursor:pointer;font-weight:600">💾 保存到报表页</div>
+      <div class="m user" style="background:var(--bg);color:var(--ink2);border:1px dashed var(--line)">试一试:粘贴微信账单,我帮你导入 →</div>
+      <div>
+        <span class="tag">生成复盘</span><span class="tag">导入账单</span><span class="tag">查某笔钱</span><span class="tag">设预算</span>
+      </div>
+    </div>
+    <div class="input"><input placeholder="问我任何账目问题,或直接说「午饭 35」…"><button class="btn primary" style="padding:9px 14px">↑</button></div>
+  </aside>
+
+</div>
+</body>
+</html>

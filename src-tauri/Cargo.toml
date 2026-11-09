@@ -1,0 +1,49 @@
+[package]
+name = "ledger"
+version = "0.1.0"
+description = "Ledger:记账、资产管理与本地财务助手"
+authors = ["you"]
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "ledger_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+rmcp = { version = "=3.9.0", default-features = false, features = ["client", "transport-child-process"] }
+tokio = { version = "1", features = ["rt-multi-thread", "time", "process"] }
+argon2 = "0.5"
+rand = "0.8"
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+mysql = "28"
+thiserror = "2.0.21"
+chrono = "0.4.45"
+ureq = { version = "3.5.0", features = ["json"] }
+tauri-plugin-dialog = "2.8.3"
+calamine = { version = "0.31", features = ["dates"] }
+encoding_rs = "0.8.44"
+tauri-plugin-notification = "2"
+
+
+# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
+
+[dev-dependencies]
+rusqlite = { version = "0.41.0", features = ["bundled"] }
+tempfile = "3.27.0"
